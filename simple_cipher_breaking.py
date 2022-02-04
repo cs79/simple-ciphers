@@ -86,7 +86,18 @@ def numify_plaintext(p):
     '''
     return [PLAIN_ALPHA.index(i) for i in p]
 
-def calc_squared_freq(c, k, alpha_size):
+def calc_squared_freq(num_text, alpha_size):
+    '''
+    Pure tabulation on numeric text to calculate squared character frequency.
+    Useful for statistical attacks on Vigenere cipher.
+    '''
+    cum_freq = 0
+    text_len = len(num_text)
+    for i in range(0, alpha_size):
+        cum_freq += (len([j for j in num_text if j == i]) / text_len) ** 2
+    return cum_freq
+
+def calc_cand_sq_freq(c, k, alpha_size):
     '''
     For candidate key k, calculate plaintext squared frequency sum.
     This assumes that k was the correct decoding key, and "squares" the frequency
@@ -111,7 +122,7 @@ def calc_all_candidate_sf(c, alpha_size):
     '''
     cands = []
     for i in range(0, alpha_size):
-        cands.append(calc_squared_freq(c, i, alpha_size))
+        cands.append(calc_cand_sq_freq(c, i, alpha_size))
     # debug:
     # print("Candidate frequencies:\t{}".format(cands))
     dists = [abs(cand - TARGET_SQ_FREQ) for cand in cands]
@@ -138,16 +149,34 @@ def encipher_vigenere(k, p, alpha_size):
     c_num = [(p_num[i] + k_num[i]) % alpha_size for i in range(len(p_num))]
     return c_num
 
+def extract_stream(n, k_len, c):
+    '''
+    Extracts the nth stream from ciphertext c (in numeric / list form),
+    assuming a period of k_len for separating the streams.
+    Stream numbering starts at 0 and goes through k_len - 1.
+    '''
+    assert n < k_len, "n must be less than k_len"
+    stream = []
+    for i in range(len(c)):
+        if i % k_len == n:
+            stream.append(c[i])
+    return stream
 
+def ioc_attack(c, max_k_len, alpha_size):
+    '''
+    TODO: for presumed k length 1..max_k_len, extract some stream (say the 0th)
+    then check the value of calc_squared_freq() on that stream; after obtaining
+    this value for all candidate key lengths, check which are closest to target
+    frequency and if there is some periodicity to this. May need heuristics for
+    choosing the "best" candidate period, but try simple rounding to start with
+    '''
 
 # demonstrate the attacks:
 
 # Statistical attack on shift cipher: should return "howmanypossiblekeysarethere"
 calc_all_candidate_sf(shift_cipher, ALPHA_SIZE)
 
-
 # Statistical attack on Vigenere cipher
-
 # hopefully sufficiently long string to demonstrate an attack:
 plain = "sciencefromlatinscientiaknowledgeisasystematicenterprisethatbuildsandorganizesknowledgeintheformoftestableexplanations" +\
          "andpredictionsabouttheuniversetheearliestrootsofsciencecanbetracedtoancientegyptandmesopotamiainaroundthreethousandto" +\
