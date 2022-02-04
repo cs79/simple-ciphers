@@ -49,6 +49,9 @@ OGQILHQFQGIQVVOSFAFGBWQVHQWIJVWJVFPFWHGFIWIHZZRQGBABHZQOCGFHX"
 
 shift_cipher = "OVDTHUFWVZZPISLRLFZHYLAOLYL"
 
+
+# functions:
+
 def decode_one(char, k, alpha_size):
     '''
     Decode a single enciphered letter for key k with alphabet size alpha_size.
@@ -72,12 +75,22 @@ def stringify_decoded(p):
     return "".join(buf)
 
 def numify_ciphertext(c):
+    '''
+    Converts ciphertext to numerical format for simpler processing.
+    '''
     return [CIPHER_ALPHA.index(i) for i in c]
 
+def numify_plaintext(p):
+    '''
+    Converts plaintext to numerical format for simpler processing.
+    '''
+    return [PLAIN_ALPHA.index(i) for i in p]
 
 def calc_squared_freq(c, k, alpha_size):
     '''
     For candidate key k, calculate plaintext squared frequency sum.
+    This assumes that k was the correct decoding key, and "squares" the frequency
+    by multiplying by the English frequency of the corresponding plaintext character.
     '''
     cum_freq = 0
     c_num = numify_ciphertext(c)
@@ -92,6 +105,9 @@ def calc_squared_freq(c, k, alpha_size):
 def calc_all_candidate_sf(c, alpha_size):
     '''
     Performs statistical attack on shift cipher for all candidate keys.
+    The candidate key with the minimum absolute distance from the target squared
+    frequency of characters (for English) is used for decoding of the returned
+    plaintext.
     '''
     cands = []
     for i in range(0, alpha_size):
@@ -107,4 +123,50 @@ def calc_all_candidate_sf(c, alpha_size):
             best_cand = i
             current_min = dists[i]
     print("Best-guess candidate squared frequency: {}".format(cands[best_cand]))
-    print("Decrypted text for best candidate:\n{}".format(stringify_decoded(decode_shifted(c, best_cand, alpha_size))))
+    best_cand_plaintext = stringify_decoded(decode_shifted(c, best_cand, alpha_size))
+    print("Decrypted text for best candidate:\n{}".format(best_cand_plaintext))
+    return best_cand_plaintext
+
+def encipher_vigenere(k, p, alpha_size):
+    '''
+    Enciphers plaintext p using key k and the Vigenere cipher.
+    Returns the numeric encoding for composability.
+    '''
+    p_num = numify_plaintext(p)
+    k_string = "".join([k for i in range(0, len(p_num) // len(k) + 1)])
+    k_num = numify_plaintext(k_string)[:len(p_num)]
+    c_num = [(p_num[i] + k_num[i]) % alpha_size for i in range(len(p_num))]
+    return c_num
+
+
+
+# demonstrate the attacks:
+
+# Statistical attack on shift cipher: should return "howmanypossiblekeysarethere"
+calc_all_candidate_sf(shift_cipher, ALPHA_SIZE)
+
+
+# Statistical attack on Vigenere cipher
+
+# hopefully sufficiently long string to demonstrate an attack:
+plain = "sciencefromlatinscientiaknowledgeisasystematicenterprisethatbuildsandorganizesknowledgeintheformoftestableexplanations" +\
+         "andpredictionsabouttheuniversetheearliestrootsofsciencecanbetracedtoancientegyptandmesopotamiainaroundthreethousandto" +\
+         "twelvehundredbcetheircontributionstomathematicsastronomyandmedicineenteredandshapedgreeknaturalphilosophyofclassical" +\
+         "antiquitywherebyformalattemptsweremadetoprovideexplanationsofeventsinthephysicalworldbasedonnaturalcausesafterthefall" +\
+         "ofthewesternromanempireknowledgeofgreekconceptionsoftheworlddeterioratedinwesterneuropeduringtheearlycenturiesfour" +\
+         "hundredtoonethousandceofthemiddleagesbutwaspreservedinthemuslimworldduringtheislamicgoldenagetherecoveryandassimilation" +\
+         "ofgreekworksandislamicinquiriesintowesterneuropefromthetenthtothirteenthcenturyrevivednaturalphilosophywhichwaslater" +\
+         "transformedbythescientificrevolutionthatbeganinthesixteenthcenturyasnewideasanddiscoveriesdepartedfrompreviousgreek" +\
+         "conceptionsandtraditionsthescientificmethodsoonplayedagreaterroleinknowledgecreationanditwasnotuntilthenineteenthcentury" +\
+         "thatmanyoftheinstitutionalandprofessionalfeaturesofsciencebegantotakeshapealongwiththechangingofnaturalphilosophytonatural" +\
+         "sciencemodernscienceistypicallydividedintothreemajorbranchesthatconsistofthenaturalsciencesbiologychemistryandphysicswhich" +\
+         "studynatureinthebroadestsensethesocialscienceseconomicspsychologyandsociologywhichstudyindividualsandsocietiesandtheformal" +\
+         "scienceslogicmathematicsandtheoreticalcomputersciencewhichdealwithsymbolsgovernedbyrulesthereisdisagreementhoweveronwhether" +\
+         "theformalsciencesactuallyconstituteascienceastheydonotrelyonempiricalevidencedisciplinesthatuseexistingscientificknowledge" +\
+         "forpracticalpurposessuchasengineeringandmedicinearedescribedasappliedsciencesnewknowledgeinscienceisadvancedbyresearchfrom" +\
+         "scientistswhoaremotivatedbycuriosityabouttheworldandadesiretosolveproblemscontemporaryscientificresearchishighly" +\
+         "collaborativeandisusuallydonebyteamsinacademicandresearchinstitutionsgovernmentagenciesandcompaniesthepracticalimpactof" +\
+         "theirworkhasledtotheemergenceofsciencepoliciesthatseektoinfluencethescientificenterprisebyprioritizingthedevelopmentof" +\
+         "commercialproductsarmamentshealthcarepublicinfrastructureandenvironmentalprotection"
+
+c_vigenere = encipher_vigenere("queen", plain, ALPHA_SIZE)
