@@ -1,3 +1,5 @@
+from random import randint
+
 # globals:
 
 # for English, target squared sum of letter frequencies:
@@ -66,6 +68,13 @@ def decode_shifted(c, k, alpha_size):
     for char in c:
         p.append(decode_one(char, k, alpha_size))
     return p
+
+def stringify_encoded(c):
+    '''
+    Convenience function for parsing an encoded string back into text form.
+    '''
+    buf = [CIPHER_ALPHA[i] for i in c]
+    return "".join(buf)
 
 def stringify_decoded(p):
     '''
@@ -138,7 +147,7 @@ def calc_all_candidate_sf(c, alpha_size):
     print("Decrypted text for best candidate:\n{}".format(best_cand_plaintext))
     return best_cand_plaintext
 
-def encipher_vigenere(k, p, alpha_size):
+def encipher_vigenere(k, p, alpha_size=ALPHA_SIZE):
     '''
     Enciphers plaintext p using key k and the Vigenere cipher.
     Returns the numeric encoding for composability.
@@ -162,14 +171,51 @@ def extract_stream(n, k_len, c):
             stream.append(c[i])
     return stream
 
-def ioc_attack(c, max_k_len, alpha_size):
+def ioc_attack(c, max_k_len, alpha_size=ALPHA_SIZE):
     '''
-    TODO: for presumed k length 1..max_k_len, extract some stream (say the 0th)
-    then check the value of calc_squared_freq() on that stream; after obtaining
-    this value for all candidate key lengths, check which are closest to target
-    frequency and if there is some periodicity to this. May need heuristics for
-    choosing the "best" candidate period, but try simple rounding to start with
+    Extracts the 0th stream of the ciphertext c for each presumed key length in
+    the range 1..max_k_len, and checks the squared ciphertext letter frequency.
+    After computing these frequencies, compares against the squared frequency
+    value for English and selects the period which is the closest match.
     '''
+    # dict to hold mapping of stream -> key length -> freqs
+    cands = []
+    # loop over candidate key lengths
+    for i in range(1, max_k_len+1):
+        # for simplicity, just use stream 0; others could be used to confirm results
+        stream = extract_stream(0, i,  c)
+        freq = calc_squared_freq(stream, alpha_size)
+        cands.append(freq)
+    # find minimum distance candidate key length (period)
+    dists = [abs(cand - TARGET_SQ_FREQ) for cand in cands]
+    best_cand = None
+    current_min = max(dists)
+    for i in range(0, len(dists)):
+        if dists[i] < current_min:
+            best_cand = i
+            current_min = dists[i]
+    print("Best-guess candidate squared frequency:\t{}".format(cands[best_cand]))
+    print("Best-guess candidate key period:\t{}".format(best_cand+1))
+    return best_cand + 1
+
+def reassemble_streams(streams_numeric):
+    '''
+    Reassembles streams (assumed in-order in list-of-lists streams_numeric) back into
+    a single text stream. All streams are assumed in numeric form.
+    '''
+    num_streams = len(streams_numeric)
+    total_length = sum([len(s) for s in streams_numeric])
+    i_global = 0
+    i_stream = 0
+    s = 0
+    reassembled = []
+    while i_global < total_length:
+        reassembled.append(streams_numeric[s][i_stream])
+        if s == num_streams - 1:
+            i_stream += 1
+        s = (s + 1) % num_streams
+        i_global += 1
+    return reassembled
 
 # demonstrate the attacks:
 
@@ -177,7 +223,7 @@ def ioc_attack(c, max_k_len, alpha_size):
 calc_all_candidate_sf(shift_cipher, ALPHA_SIZE)
 
 # Statistical attack on Vigenere cipher
-# hopefully sufficiently long string to demonstrate an attack:
+# hopefully sufficiently long string to demonstrate an attack - taken from Wikipedia page on "Science":
 plain = "sciencefromlatinscientiaknowledgeisasystematicenterprisethatbuildsandorganizesknowledgeintheformoftestableexplanations" +\
          "andpredictionsabouttheuniversetheearliestrootsofsciencecanbetracedtoancientegyptandmesopotamiainaroundthreethousandto" +\
          "twelvehundredbcetheircontributionstomathematicsastronomyandmedicineenteredandshapedgreeknaturalphilosophyofclassical" +\
@@ -198,4 +244,15 @@ plain = "sciencefromlatinscientiaknowledgeisasystematicenterprisethatbuildsandor
          "theirworkhasledtotheemergenceofsciencepoliciesthatseektoinfluencethescientificenterprisebyprioritizingthedevelopmentof" +\
          "commercialproductsarmamentshealthcarepublicinfrastructureandenvironmentalprotection"
 
-c_vigenere = encipher_vigenere("queen", plain, ALPHA_SIZE)
+c_vigenere = encipher_vigenere("queen", plain)
+
+# index of coincidence attack: should return 5 as most probable key length
+ioc_attack(c_vigenere, 10)
+
+# after ioc_attack discovers candidate period 5, try attacking each stream for the key:
+streams_alpha = [stringify_encoded(extract_stream(i, 5, c_vigenere)) for i in range(0,5)]
+decoded_alpha = [calc_all_candidate_sf(streams_alpha[i], ALPHA_SIZE) for i in range(0,5)]
+
+# reassemble the individually-decoded streams and decode the overall plaintext:
+reassembled_num = reassemble_streams([numify_plaintext(s) for s in decoded_alpha])
+decoded_plaintext = calc_all_candidate_sf(stringify_encoded(reassembled_num), ALPHA_SIZE)
