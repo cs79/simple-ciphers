@@ -1,5 +1,3 @@
-from random import randint
-
 # globals:
 
 # for English, target squared sum of letter frequencies:
@@ -223,7 +221,7 @@ def reassemble_streams(streams_numeric):
 calc_all_candidate_sf(shift_cipher, ALPHA_SIZE)
 
 # Statistical attack on Vigenere cipher
-# hopefully sufficiently long string to demonstrate an attack - taken from Wikipedia page on "Science":
+# sufficiently long message string to demonstrate an attack - taken from Wikipedia page on "Science":
 plain = "sciencefromlatinscientiaknowledgeisasystematicenterprisethatbuildsandorganizesknowledgeintheformoftestableexplanations" +\
          "andpredictionsabouttheuniversetheearliestrootsofsciencecanbetracedtoancientegyptandmesopotamiainaroundthreethousandto" +\
          "twelvehundredbcetheircontributionstomathematicsastronomyandmedicineenteredandshapedgreeknaturalphilosophyofclassical" +\
@@ -244,6 +242,7 @@ plain = "sciencefromlatinscientiaknowledgeisasystematicenterprisethatbuildsandor
          "theirworkhasledtotheemergenceofsciencepoliciesthatseektoinfluencethescientificenterprisebyprioritizingthedevelopmentof" +\
          "commercialproductsarmamentshealthcarepublicinfrastructureandenvironmentalprotection"
 
+# encipher the plaintext using an arbitrary key:
 c_vigenere = encipher_vigenere("queen", plain)
 
 # index of coincidence attack: should return 5 as most probable key length
